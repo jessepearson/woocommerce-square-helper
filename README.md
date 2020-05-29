@@ -1,0 +1,1 @@
+# woocommerce-square-helper
