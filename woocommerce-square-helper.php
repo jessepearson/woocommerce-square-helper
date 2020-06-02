@@ -87,6 +87,13 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 				echo $this->notice;
 			}
 
+			// Check to see that WooCommerce and Square are both active
+			$active_plugins = get_option( 'active_plugins' );
+			wpsd_log( $active_plugins, '$active_plugins' );
+			
+			
+			// Check to see that Square is connected
+
 			// Set the form action URL.
 			$action_url = add_query_arg( array( 'page' => 'square-helper' ), admin_url( 'tools.php' ) );
 			?>
