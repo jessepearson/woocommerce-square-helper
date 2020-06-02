@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: WooCommerce Square Helper
- * Version: 1.0.0
+ * Version: 1.0.1
  * Plugin URI: https://github.com/jessepearson/woocommerce-square-helper
  * Description: WooCommerce Square Helper tool for use with debugging.
  * Author: WooCommerce
@@ -78,29 +78,56 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 		 * Once new form is added move to catch_requests() to add your new action. 
 		 *
 		 * @since 1.0.0
-		 * @version 1.0.0
+		 * @version 1.0.1
 		 */
 		public function tool_page() {
 
-			// Output any notices. 
-			if ( ! empty( $this->notice ) ) {
-				echo $this->notice;
-			}
-
-			// Check to see that WooCommerce and Square are both active
-			$active_plugins = get_option( 'active_plugins' );
-			wpsd_log( $active_plugins, '$active_plugins' );
-			
-			
-			// Check to see that Square is connected
-
-			// Set the form action URL.
-			$action_url = add_query_arg( array( 'page' => 'square-helper' ), admin_url( 'tools.php' ) );
+			// Start output
 			?>
 			<div class="wrap">
 				<h1>Square Helper</h1>
 				<hr />
 				<div>
+
+			<?php 
+
+			// Check to see that WooCommerce and Square are both active, and Square is connected
+			$woocommerce_inactive = $square_inactive = $square_connected = false;
+			if ( ! class_exists( 'WooCommerce' ) ) {
+				$this->print_notice( 'WooCommerce is not active.', 'error' );
+				$woocommerce_inactive = true;
+			}
+
+			if ( ! class_exists( 'WooCommerce_Square_Loader' ) ) {
+				$this->print_notice( 'Square is not active.', 'error' );
+				$square_inactive = true;
+			} else {
+
+				if ( ! wc_square()->get_settings_handler()->is_connected() ) {
+					$this->print_notice( 'Square is not connected.', 'error' );
+					$square_not_connected = true;
+				}
+			}
+
+			// Output any notices or errors. 
+			if ( ! empty( $this->notice ) ) {
+				echo $this->notice;
+			}
+
+			// If we have an error, ask to fix it and exit. 
+			if ( $woocommerce_inactive || $square_inactive || $square_not_connected ) {	
+				?>
+					<p>Please correct the errors listed above, and then the tools will be available.</p>
+				</div>
+			</div>
+
+				<?php
+				exit;
+			} 
+
+			// Set the form action URL.
+			$action_url = add_query_arg( array( 'page' => 'square-helper' ), admin_url( 'tools.php' ) );
+			?>
 
 					<h3>Sync Product Inventory</h3>
 					<form action="<?php echo $action_url; ?>" method="post" style="margin-bottom:20px;border:1px solid #ccc;padding:5px;">
