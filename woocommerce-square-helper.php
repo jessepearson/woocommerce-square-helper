@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: WooCommerce Square Helper
- * Version: 1.0.1
+ * Version: 1.0.2
  * Plugin URI: https://github.com/jessepearson/woocommerce-square-helper
  * Description: WooCommerce Square Helper tool for use with debugging.
  * Author: WooCommerce

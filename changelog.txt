@@ -1,5 +1,8 @@
 *** WooCommerce Square Helper Changelog ***
 
+2020-06-08 - version 1.0.2
+* Tweak - testing
+
 2020-06-02 - version 1.0.1
 * Tweak - Check for WooCommerce and Square being active and Square being connected.
 
