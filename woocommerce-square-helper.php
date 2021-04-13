@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: WooCommerce Square Helper
- * Version: 1.0.1
+ * Version: 1.0.6
  * Plugin URI: https://github.com/jessepearson/woocommerce-square-helper
  * Description: WooCommerce Square Helper tool for use with debugging.
  * Author: WooCommerce
@@ -53,11 +53,26 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 		 * Shouldn't really need to touch this.
 		 *
 		 * @since 1.0.0
-		 * @version 1.0.0
+		 * @version 1.0.6
 		 */
 		public function init() {
-			add_action( 'admin_menu', array( $this, 'add_submenu_page' ) );
-			add_action( 'init', array( $this, 'catch_requests' ), 20 );
+			add_action( 'admin_menu', [ $this, 'add_submenu_page' ] );
+			add_action( 'init', [ $this, 'catch_requests' ], 20 );
+			add_action( 'init', [ $this, 'includes' ] );
+		}
+
+		/**
+		 * File includes.
+		 *
+		 * @since   1.0.6
+		 * @version 1.0.6
+		 */
+		public function includes() {
+			require_once( 'includes/class-wc-square-helper-filters.php' );
+			require_once( 'includes/class-wc-square-sync-kicker.php' );
+
+			$this->filters = new WC_Square_Helper_Filters();
+			$this->kicker  = new WC_Square_Sync_Kicker();
 		}
 
 		/**
@@ -68,31 +83,31 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 		 * @version 1.0.0
 		 */
 		public function add_submenu_page() {
-			add_submenu_page( 'tools.php', 'Square Helper', 'Square Helper', 'manage_options', 'square-helper', array( $this, 'tool_page' ) );
+			add_submenu_page( 'tools.php', 'Square Helper', 'Square Helper', 'manage_options', 'square-helper', [ $this, 'tool_page' ] );
 		}
 
 		/**
 		 * Renders the tool page.
-		 * 
-		 * In order to create another tool on the page, copy and paste the form, then add/modify needed fields.
-		 * Once new form is added move to catch_requests() to add your new action. 
 		 *
-		 * @since 1.0.0
-		 * @version 1.0.1
+		 * In order to create another tool on the page, copy and paste the form, then add/modify needed fields.
+		 * Once new form is added move to catch_requests() to add your new action.
+		 *
+		 * @since   1.0.0
+		 * @version 1.0.6
 		 */
 		public function tool_page() {
 
 			// Start output
 			?>
 			<div class="wrap">
-				<h1>Square Helper</h1>
-				<hr />
-				<div>
+			<h1>Square Helper</h1>
+			<hr />
+			<div>
 
-			<?php 
+			<?php
 
 			// Check to see that WooCommerce and Square are both active, and Square is connected
-			$woocommerce_inactive = $square_inactive = $square_connected = false;
+			$woocommerce_inactive = $square_inactive = $square_not_connected = false;
 			if ( ! class_exists( 'WooCommerce' ) ) {
 				$this->print_notice( 'WooCommerce is not active.', 'error' );
 				$woocommerce_inactive = true;
@@ -109,41 +124,64 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 				}
 			}
 
-			// Output any notices or errors. 
+			// Output any notices or errors.
 			if ( ! empty( $this->notice ) ) {
 				echo $this->notice;
 			}
 
-			// If we have an error, ask to fix it and exit. 
-			if ( $woocommerce_inactive || $square_inactive || $square_not_connected ) {	
+			// If we have an error, ask to fix it and exit.
+			if ( $woocommerce_inactive || $square_inactive || $square_not_connected ) {
 				?>
-					<p>Please correct the errors listed above, and then the tools will be available.</p>
+				<p>Please correct the errors listed above, and then the tools will be available.</p>
 				</div>
-			</div>
+				</div>
 
 				<?php
 				exit;
-			} 
+			}
 
 			// Set the form action URL.
-			$action_url = add_query_arg( array( 'page' => 'square-helper' ), admin_url( 'tools.php' ) );
+			$action_url = add_query_arg( [ 'page' => 'square-helper' ], admin_url( 'tools.php' ) );
+
+			$form_sections = [
+				[ 
+					'name'    => 'sync_product',
+					'heading' => 'Sync Product Inventory',
+					'button'  => 'Sync Product Inventory',
+					'content' => '
+						<tr>
+							<td>
+								<label>Product or variation ID: <input type="number" name="product_id" min="1" /></label>
+								Syncs inventory of a specific product or variation with Square.
+								<input type="hidden" name="action" value="sync_product" />
+							</td>
+						</tr>',
+				],
+			];
+			
+			$form_sections = apply_filters( 'wc_square_helper_form_sections', $form_sections );
+			
+			foreach ( $form_sections as $section ) {
+				echo '
+				<h3>'. $section['heading'] .'</h3>
+				<form action="'. $action_url .'" method="post" style="margin-bottom:20px;border:1px solid #ccc;padding:5px;">
+					<table>';
+				echo $section['content'];
+				wp_nonce_field( $section['name'] );
+				echo '
+						<tr>
+							<td>
+								<input type="submit" class="button" value="'. $section['button'] .'" />
+								<input type="hidden" name="action" value="'. $section['name'] .'" />
+							</td>
+						</tr>
+					</table>
+				</form>';
+			}
+
+			// End output
 			?>
-
-					<h3>Sync Product Inventory</h3>
-					<form action="<?php echo $action_url; ?>" method="post" style="margin-bottom:20px;border:1px solid #ccc;padding:5px;">
-						<table>
-							<tr>
-								<td>
-									<label>Product or variation ID: <input type="number" name="product_id" min="1" /></label>
-									<input type="submit" class="button" value="Sync Inventory" /> <label>Syncs inventory of a specific product or variation with Square.</label>
-									<input type="hidden" name="action" value="sync_product" />
-									<?php wp_nonce_field( 'sync_product' ); ?>
-								</td>
-							</tr>
-						</table>
-					</form>
-
-				</div>
+			</div>
 			</div>
 			<?php
 		}
@@ -151,7 +189,7 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 		/**
 		 * Catches form requests.
 		 *
-		 * Here you will need to add your action to the $actions array. 
+		 * Here you will need to add your action to the $actions array.
 		 * Next your action will need to be added to the switch statement to call your processing function.
 		 *
 		 * @since 1.0.0
@@ -164,13 +202,15 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 				return;
 			}
 
-			// If there's no action or nonce, exit quietly. 
+			// If there's no action or nonce, exit quietly.
 			if ( ! isset( $_POST['action'] ) || ! isset( $_POST['_wpnonce'] ) ) {
 				return;
 			}
 
 			$actions = [
 				'sync_product',
+				'sync_limits',
+				'sync_kicker',
 			];
 
 			if ( ! in_array( $_POST['action'], $actions ) ) {
@@ -185,6 +225,16 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 				case 'sync_product':
 					$this->sync_single_product();
 					break;
+				case 'sync_limits':
+					$result = $this->filters->update_sync_limits();
+					// TODO: Make this cleaner.
+					$this->print_notice( $result );
+					break;
+				case 'sync_kicker':
+					$result = $this->kicker->enable_disable_kicker();
+					// TODO: Make this cleaner.
+					$this->print_notice( $result );
+					break;
 			}
 		}
 
@@ -195,16 +245,16 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 		 * @version 1.0.0
 		 */
 		public function example_processing_function() {
-			$this->log( 'Begin example processing.' );
+			WC_Square_Helper::log( 'Begin example processing.' );
 
 			try {
 
 				if ( true ) {
-					$this->log( 'That worked.' );
+					WC_Square_Helper::log( 'That worked.' );
 					$this->print_notice( 'That worked.' );
 
 				} else  {
-					$this->log( 'That failed.' );
+					WC_Square_Helper::log( 'That failed.' );
 					throw new Exception( 'That failed!' );
 				}
 
@@ -224,13 +274,13 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 		 * @version 1.0.0
 		 */
 		public function sync_single_product() {
-			$this->log( 'Attempting to sync inventory of single product.' );
+			WC_Square_Helper::log( 'Attempting to sync inventory of single product.' );
 
 			try {
 				// Make sure we have a valid product
 				$product_id     = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : '';
-				$this->log( 'Product ID submitted: '. $product_id );
-				
+				WC_Square_Helper::log( 'Product ID submitted: '. $product_id );
+
 				$product = wc_get_product( $product_id );
 
 				if ( $product instanceof WC_Product ) {
@@ -238,14 +288,14 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 					$term_product = $product;
 					// if this is a variation, check its parent
 					if ( $parent_product = wc_get_product( $term_product->get_parent_id() ) ) {
-						
+
 						if ( $parent_product instanceof WC_Product ) {
 							$term_product = $parent_product;
-							$this->log( $product_id .' is a variation of '. $product->get_id() );
+							WC_Square_Helper::log( $product_id .' is a variation of '. $product->get_id() );
 						}
 					}
 				} else  {
-					$this->log( $product_id .' is not a valid product.' );
+					WC_Square_Helper::log( $product_id .' is not a valid product.' );
 					throw new Exception( 'Product ID: '. $product_id .' does not exist!' );
 				}
 
@@ -253,7 +303,7 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 				$terms = wp_get_post_terms( $term_product->get_id(), 'wc_square_synced', [ 'fields' => 'names' ] );
 
 				if ( empty( $terms ) || 'yes' !== $terms[0] ) {
-					$this->log( $product_id .' is not set to be synced with Square.' );
+					WC_Square_Helper::log( $product_id .' is not set to be synced with Square.' );
 					throw new Exception( 'Product ID: '. $product_id .' is not set to be synced with Square' );
 				}
 
@@ -261,10 +311,10 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 				$square_item_variation_id = get_post_meta( $product_id, '_square_item_variation_id', true ) ?: null;
 
 				if ( null === $square_item_variation_id ) {
-					$this->log( $product_id .' does not have a _square_item_variation_id set.' );
+					WC_Square_Helper::log( $product_id .' does not have a _square_item_variation_id set.' );
 					throw new Exception( 'Product ID: '. $product_id .' does not have a _square_item_variation_id set.' );
 				} else {
-					$this->log( $product_id .' has _square_item_variation_id:'. $square_item_variation_id );
+					WC_Square_Helper::log( $product_id .' has _square_item_variation_id:'. $square_item_variation_id );
 				}
 
 				// Set the args.
@@ -273,10 +323,10 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 					'catalog_object_ids' => [ $square_item_variation_id ],
 				];
 
-				// Query the inventory from Square for the product. 
-				$this->log( 'Querying batch_retrieve_inventory_counts with args:'."\n". print_r( $args, true ) );
+				// Query the inventory from Square for the product.
+				WC_Square_Helper::log( 'Querying batch_retrieve_inventory_counts with args:'."\n". print_r( $args, true ) );
 				$response = wc_square()->get_api()->batch_retrieve_inventory_counts( $args );
-				$this->log( 'Response received:'."\n". print_r( $response, true ) );
+				WC_Square_Helper::log( 'Response received:'."\n". print_r( $response, true ) );
 
 				foreach ( $response->get_counts() as $count ) {
 
@@ -285,7 +335,7 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 
 						$product->set_stock_quantity( $count->getQuantity() );
 						$product->save();
-						$this->log( $product_id .' inventory count updated to: '. $count->getQuantity() );
+						WC_Square_Helper::log( $product_id .' inventory count updated to: '. $count->getQuantity() );
 						$this->print_notice( $product_id .' inventory count updated to: '. $count->getQuantity() );
 
 					}
@@ -331,8 +381,8 @@ if ( ! class_exists( 'WC_Square_Helper' ) ) {
 		 * @param string $message
 		 * @param string $type
 		 */
-		public function log( $message = '' ) {
-			$log     = wc_get_logger();
+		static function log( $message = '' ) {
+			$log = wc_get_logger();
 			$log->debug( $message, [ 'source' => 'square-helper' ] );
 		}
 	}
