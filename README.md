@@ -20,7 +20,3 @@ It is set up to be able to add more functionality when needed.
 
 1. Install the plugin.
 1. Go to Tools > Square Helper.
-
-### Notes
-
-There should be a zip file in this repo, make sure the version number matches what's in the code.
