@@ -14,7 +14,7 @@ It is set up to be able to add more functionality when needed.
 
 1. Sometimes sites break, and this can fix the inventory of single items at a time, if needed. 
 1. If a site is timing out, this makes it possible to lower (or raise) the limits on what's queried from Square at a time. Values are saved in the database, then applied via filters. 
-1. The kicker sets up a schedled action to kick the sync if it has gotten stuck.
+1. The kicker sets up a scheduled action to kick the sync if it has gotten stuck.
 
 ## Setup
 
